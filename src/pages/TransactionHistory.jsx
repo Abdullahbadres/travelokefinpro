@@ -50,7 +50,6 @@ const TransactionHistory = () => {
   const [cancelReason, setCancelReason] = useState("")
   const [newStatus, setNewStatus] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [refreshInterval, setRefreshInterval] = useState(null)
   const [lastRefreshed, setLastRefreshed] = useState(new Date())
   const [manualRefresh, setManualRefresh] = useState(0)
   const [countdowns, setCountdowns] = useState({})
@@ -197,7 +196,7 @@ const TransactionHistory = () => {
     }
   }
 
-  // Modify the fetchTransactions function to better handle transaction data integration
+  // Enhanced fetchTransactions function with better integration
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true)
@@ -288,115 +287,6 @@ const TransactionHistory = () => {
       // Check URL for transactionId parameter (for direct navigation from cart)
       const urlParams = new URLSearchParams(location.search)
       const highlightTransactionId = urlParams.get("transactionId")
-
-      // Add the specific transactions mentioned by the user
-      const specificTransactionIds = [
-        "e82e40e6-c192-4c49-8c78-0e41e3088ee9",
-        "6ae89479-0c15-4175-8642-dc52fd8551c2",
-        "e46d50cd-0976-40f5-9c33-51180c3f15b2",
-        "e4c98077-ba4b-47f6-a0ad-3acd292f0e6f",
-      ]
-
-      specificTransactionIds.forEach((id) => {
-        if (!processedTransactions.some((t) => t.id === id)) {
-          // Create a transaction with this ID if it doesn't exist
-          let newTransaction = {
-            id: id,
-            activity: {
-              title: "Unknown Activity",
-              price: 0,
-              imageUrls: ["/placeholder.svg?height=300&width=300"],
-            },
-            amount: 0,
-            quantity: 1,
-            status: "pending",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            user: user
-              ? {
-                  id: user.id,
-                  name: user.name,
-                  email: user.email,
-                }
-              : null,
-          }
-
-          // Set specific details for each transaction
-          if (id === "e82e40e6-c192-4c49-8c78-0e41e3088ee9" || id === "6ae89479-0c15-4175-8642-dc52fd8551c2") {
-            newTransaction = {
-              ...newTransaction,
-              status: "hold",
-              paymentProofUrl: "https://source.unsplash.com/random/300x400/?payment",
-            }
-          }
-
-          if (id === "e46d50cd-0976-40f5-9c33-51180c3f15b2") {
-            newTransaction = {
-              ...newTransaction,
-              activity: {
-                title: "Sea World Ancol",
-                price: 100000,
-                imageUrls: ["/placeholder.svg?height=300&width=300"],
-              },
-              quantity: 2,
-              amount: 200000,
-              status: "pending",
-            }
-          }
-
-          if (id === "e4c98077-ba4b-47f6-a0ad-3acd292f0e6f") {
-            newTransaction = {
-              ...newTransaction,
-              activity: {
-                title: "Sisir Sungai",
-                price: 1500000,
-                imageUrls: ["/placeholder.svg?height=300&width=300"],
-              },
-              quantity: 1,
-              amount: 1500000,
-              status: "hold",
-              paymentProofUrl: "https://source.unsplash.com/random/300x400/?payment",
-            }
-          }
-
-          processedTransactions.push(newTransaction)
-        } else {
-          // If the transaction exists but doesn't have payment proof, update it
-          processedTransactions = processedTransactions.map((t) => {
-            if (t.id === id) {
-              // For the specific IDs that should have payment proof
-              if (
-                id === "e82e40e6-c192-4c49-8c78-0e41e3088ee9" ||
-                id === "6ae89479-0c15-4175-8642-dc52fd8551c2" ||
-                id === "e4c98077-ba4b-47f6-a0ad-3acd292f0e6f"
-              ) {
-                return {
-                  ...t,
-                  status: "hold",
-                  paymentProofUrl: t.paymentProofUrl || "https://source.unsplash.com/random/300x400/?payment",
-                  updatedAt: new Date().toISOString(),
-                }
-              }
-
-              // For Sea World Ancol transaction
-              if (id === "e46d50cd-0976-40f5-9c33-51180c3f15b2" && !t.activity?.title) {
-                return {
-                  ...t,
-                  activity: {
-                    ...t.activity,
-                    title: "Sea World Ancol",
-                    price: 100000,
-                  },
-                  quantity: 2,
-                  amount: 200000,
-                  status: "pending",
-                }
-              }
-            }
-            return t
-          })
-        }
-      })
 
       // Check for any transactions in localStorage that might have been updated elsewhere
       try {
@@ -658,30 +548,23 @@ const TransactionHistory = () => {
     }
   }, [fetchTransactions])
 
-  // Initial data load and setup real-time refresh
+  // IMPROVED: Less frequent auto-refresh to avoid UI disruption
   useEffect(() => {
     fetchTransactions()
 
-    // Clear any existing interval before setting a new one
-    if (refreshInterval) {
-      clearInterval(refreshInterval)
-    }
-
-    // Set up real-time refresh every 15 seconds for admin users
-    // or every 30 seconds for regular users
-    const intervalTime = user?.role === "admin" ? 15000 : 30000 // 15 or 30 seconds
+    // Reduced auto-refresh frequency from 30s to 2 minutes to avoid UI disruption
+    const intervalTime = 120000 // 2 minutes
     const intervalId = setInterval(() => {
+      console.log("Auto-refreshing transactions (every 2 minutes)")
       fetchTransactions()
     }, intervalTime)
-
-    setRefreshInterval(intervalId)
 
     return () => {
       if (intervalId) {
         clearInterval(intervalId)
       }
     }
-  }, [fetchTransactions, user?.role, manualRefresh])
+  }, [fetchTransactions, manualRefresh])
 
   // Update countdowns every second
   useEffect(() => {
@@ -1116,7 +999,7 @@ const TransactionHistory = () => {
       <div className="min-h-screen bg-gray-50 pt-16 pb-12 px-4 sm:px-6 lg:px-8 flex justify-center items-center">
         <div className="flex flex-col items-center">
           <ArrowPathIcon className="w-12 h-12 text-blue-500 animate-spin" />
-          <h2 className="mt-4 text-lg font-medium text-gray-900">Memuat riwayat transaksi...</h2>
+          <h2 className="mt-4 text-lg font-medium text-gray-900">Loading transaction history...</h2>
         </div>
       </div>
     )
