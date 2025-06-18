@@ -101,6 +101,27 @@ export const CartProvider = ({ children }) => {
     return cart.reduce((count, item) => count + item.quantity, 0)
   }
 
+  const clearCart = async () => {
+    try {
+      setLoading(true)
+      // Clear cart items one by one
+      const clearPromises = cart.map((item) => deleteCartApi(item.id))
+      await Promise.all(clearPromises)
+
+      // Update local state
+      setCart([])
+      console.log("✅ Cart cleared successfully")
+      return true
+    } catch (error) {
+      console.error("Error clearing cart:", error)
+      // Force clear local state even if API fails
+      setCart([])
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <CartContext.Provider
       value={{
@@ -112,6 +133,7 @@ export const CartProvider = ({ children }) => {
         getCartTotal,
         getCartCount,
         refreshCart: fetchCart,
+        clearCart,
       }}
     >
       {children}
